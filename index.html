@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f6f8">
+<title>ציר הזמן של מדינת ישראל</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --text: #1a1d23;
+    --muted: #5a6170;
+    --line: #cfd5de;
+    --accent: #1f5fbf;
+    --accent-weak: #e7efff;
+    --anchor-bg: #26334d;
+    --anchor-text: #ffffff;
+    --anchor-badge: #f2c14e;
+    --anchor-badge-text: #1a1d23;
+    --ok-bg: #e2f4e7;
+    --ok-border: #2a8a4a;
+    --ok-text: #14532d;
+    --sel: #e09b00;
+    --sel-weak: #fff4d6;
+    --shadow: 0 1px 2px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.06);
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b;
+      --surface: #1d222b;
+      --text: #eef1f5;
+      --muted: #a4acba;
+      --line: #3a4252;
+      --accent: #7fa8ff;
+      --accent-weak: #22304a;
+      --anchor-bg: #344566;
+      --anchor-text: #ffffff;
+      --anchor-badge: #f2c14e;
+      --anchor-badge-text: #1a1d23;
+      --ok-bg: #173523;
+      --ok-border: #4cc274;
+      --ok-text: #c9f2d6;
+      --sel: #f2b630;
+      --sel-weak: #3a3014;
+      --shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", "Arial Hebrew", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+    padding-bottom: calc(var(--dock-h, 190px) + 16px);
+  }
+  body.is-done { padding-bottom: 32px; }
+  body.is-done .instr { font-size: 1.1rem; font-weight: 700; color: var(--ok-border); }
+  button { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  /* ---------- כותרת ---------- */
+  .title {
+    margin: 0;
+    padding: 14px 16px 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    padding: 8px 16px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .instr { margin: 0; font-size: .98rem; color: var(--text); }
+  .first-score {
+    margin-top: 6px;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .first-score.pop { animation: pop .5s ease-out; }
+  @keyframes pop { 0% { transform: scale(.92); opacity: .4; } 100% { transform: scale(1); opacity: 1; } }
+  .stats { margin-top: 6px; }
+  .stats div { font-size: 1.35rem; font-weight: 800; }
+  .stats div + div { font-size: 1.1rem; font-weight: 700; color: var(--muted); }
+
+  /* ---------- ציר הזמן ---------- */
+  main { padding: 6px 16px 0; }
+  .edge {
+    font-size: .85rem;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 6px 0;
+    padding-inline-start: 34px;
+  }
+  .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 11px;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--line);
+  }
+  .row {
+    position: relative;
+    padding-inline-start: 34px;
+    margin: 0 0 8px;
+  }
+  .row::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 6px;
+    top: 50%;
+    width: 12px; height: 12px;
+    margin-top: -6px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--line);
+  }
+  .row.r-anchor::before { background: var(--anchor-bg); border-color: var(--anchor-bg); }
+  .row.r-locked::before { background: var(--ok-border); border-color: var(--ok-border); }
+
+  .slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 56px;
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    border: 2px dashed var(--line);
+    background: transparent;
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    transition: background-color .15s, border-color .15s;
+  }
+  .slot:focus-visible, .card:focus-visible, .check:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .slot .ph { color: var(--muted); font-size: .9rem; }
+  .slot.empty.can-drop { border-color: var(--sel); background: var(--sel-weak); }
+  .slot.empty.can-drop .ph { color: var(--text); font-weight: 600; }
+  .slot.filled {
+    border: 2px solid var(--line);
+    border-style: solid;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .slot.anchor {
+    border: 2px solid var(--anchor-bg);
+    background: var(--anchor-bg);
+    color: var(--anchor-text);
+    cursor: default;
+  }
+  .slot.locked {
+    border: 2px solid var(--ok-border);
+    background: var(--ok-bg);
+    color: var(--ok-text);
+    cursor: default;
+  }
+  .slot.drop-target { border-color: var(--sel) !important; background: var(--sel-weak) !important; color: var(--text) !important; }
+  .slot .txt { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+  .badge {
+    flex: 0 0 auto;
+    font-size: .82rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--anchor-badge);
+    color: var(--anchor-badge-text);
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  .year {
+    flex: 0 0 auto;
+    font-size: .85rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--accent-weak);
+    color: var(--accent);
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  .ico { flex: 0 0 auto; display: inline-flex; width: 22px; height: 22px; }
+  .ico svg { width: 100%; height: 100%; }
+  .ok-label { flex: 0 0 auto; font-size: .8rem; font-weight: 700; }
+
+  /* ידית גרירה */
+  .handle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    min-height: 44px;
+    align-self: stretch;
+    margin-inline-start: -6px;
+    border-radius: 8px;
+    color: var(--muted);
+    touch-action: none;
+    cursor: grab;
+  }
+  .handle svg { width: 16px; height: 24px; }
+
+  /* ---------- מגש ---------- */
+  .dock {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 14px rgba(0,0,0,.08);
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  .dock.drop-target { background: var(--sel-weak); }
+  .msg {
+    margin: 0 16px 6px;
+    font-size: .92rem;
+    color: var(--text);
+  }
+  .msg:empty { display: none; }
+  .tray-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 16px 6px;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  .tray {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 16px 8px;
+    scroll-padding: 0 16px;
+    min-height: 76px;
+    align-items: stretch;
+  }
+  .tray-empty {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: .92rem;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 8px;
+    text-align: center;
+  }
+  .card {
+    flex: 0 0 auto;
+    width: 10.5rem;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    border: 2px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    transition: border-color .15s, background-color .15s, transform .15s;
+  }
+  .card .txt { flex: 1 1 auto; min-width: 0; font-size: .93rem; font-weight: 600; overflow-wrap: anywhere; }
+  .card.selected {
+    border-color: var(--sel);
+    background: var(--sel-weak);
+    box-shadow: 0 0 0 3px var(--sel);
+    transform: translateY(-2px);
+  }
+  .drag-src { opacity: .35; }
+  .ghost {
+    position: fixed !important;
+    z-index: 100;
+    pointer-events: none;
+    margin: 0 !important;
+    opacity: .95;
+    box-shadow: 0 10px 28px rgba(0,0,0,.28) !important;
+    transform: rotate(-1.5deg);
+  }
+
+  .check {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 4px 16px 0;
+    min-height: 50px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) { .check { color: #0d1526; } }
+  .check:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    .card.selected { transform: none; }
+    .ghost { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1 class="title">ציר הזמן של מדינת ישראל</h1>
+<header class="top" id="top">
+  <p class="instr" id="instr">סדרו את האירועים מהמוקדם (למעלה) למאוחר (למטה)</p>
+  <div class="first-score" id="firstScore" hidden></div>
+  <div class="stats" id="stats" hidden></div>
+</header>
+
+<main>
+  <div class="edge" aria-hidden="true">▲ מוקדם</div>
+  <ol class="timeline" id="timeline" aria-label="ציר הזמן"></ol>
+  <div class="edge" aria-hidden="true">▼ מאוחר</div>
+</main>
+
+<footer class="dock" id="dock">
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  <div class="tray-head"><span id="trayCount"></span><span>הקישו על אירוע ואז על משבצת</span></div>
+  <div class="tray" id="tray" aria-label="מגש האירועים"></div>
+  <button type="button" class="check" id="checkBtn" disabled>בדיקה</button>
+</footer>
+
+<script>
+/* CORE:START - סימון לבדיקה האוטומטית, לא למחוק */
+
+/* =====================================================================
+   נתוני האירועים - כאן עורכים
+   ---------------------------------------------------------------------
+   כל אירוע:
+     sortKey - תאריך בפורמט YYYY-MM-DD. קובע את הסדר הנכון. לא מוצג.
+     year    - השנה. מוצגת רק במסך הסיום (ובעוגנים).
+     text    - הטקסט שעל הכרטיס.
+   עוגנים (anchor: true) - תמיד מופיעים, קבועים במקומם, label מוצג עליהם.
+   allowAnchorYear: true - האירוע רשאי להופיע יחד עם עוגן מאותה שנה.
+   כלל החלוקה: 10 אירועים, אין שניים מאותה שנה, ואין אירוע משנה של עוגן
+   (למעט אירוע המסומן allowAnchorYear).
+   שינוי ברשימה מחלק אוטומטית יד חדשה לכל מי שכבר פתח את המשחק.
+   ===================================================================== */
+const EVENTS = [
+  // ---- עוגנים ----
+  { sortKey: "1948-05-14", year: 1948, text: "הכרזת העצמאות", anchor: true, label: "14.5.1948" },
+  { sortKey: "1979-03-26", year: 1979, text: "חתימת הסכם השלום עם מצרים", anchor: true, label: "1979" },
+  { sortKey: "2023-10-07", year: 2023, text: "מתקפת 7 באוקטובר ופרוץ מלחמת חרבות ברזל", anchor: true, label: "7.10.2023" },
+
+  // ---- מאגר האירועים ----
+  { sortKey: "1947-11-29", year: 1947, text: "האו\"ם מצביע על תוכנית החלוקה" },
+  { sortKey: "1947-11-30", year: 1947, text: "פורצת מלחמת העצמאות" },
+  { sortKey: "1948-06-01", year: 1948, text: "תחילת גלי העלייה הגדולים", allowAnchorYear: true },
+  { sortKey: "1949-01-25", year: 1949, text: "הבחירות לכנסת הראשונה" },
+  { sortKey: "1950-07-05", year: 1950, text: "חוק השבות" },
+  { sortKey: "1952-09-10", year: 1952, text: "הסכם השילומים עם גרמניה" },
+  { sortKey: "1956-10-29", year: 1956, text: "מבצע קדש - מלחמת סיני" },
+  { sortKey: "1961-04-11", year: 1961, text: "משפט אייכמן" },
+  { sortKey: "1964-06-10", year: 1964, text: "חנוכת המוביל הארצי" },
+  { sortKey: "1967-06-05", year: 1967, text: "מלחמת ששת הימים" },
+  { sortKey: "1969-03-08", year: 1969, text: "מלחמת ההתשה" },
+  { sortKey: "1972-09-05", year: 1972, text: "טבח הספורטאים באולימפיאדת מינכן" },
+  { sortKey: "1973-10-06", year: 1973, text: "מלחמת יום הכיפורים" },
+  { sortKey: "1977-05-17", year: 1977, text: "המהפך הפוליטי - הליכוד עולה לשלטון" },
+  { sortKey: "1977-11-19", year: 1977, text: "ביקור נשיא מצרים סאדאת בישראל" },
+  { sortKey: "1978-09-17", year: 1978, text: "הסכמי קמפ דייוויד" },
+  { sortKey: "1982-06-06", year: 1982, text: "מלחמת לבנון הראשונה - שלום הגליל" },
+  { sortKey: "1984-11-21", year: 1984, text: "מבצע משה - עליית יהודי אתיופיה" },
+  { sortKey: "1987-12-09", year: 1987, text: "האינתיפאדה הראשונה" },
+  { sortKey: "1990-01-01", year: 1990, text: "העלייה ההמונית מברית המועצות לשעבר" },
+  { sortKey: "1991-01-17", year: 1991, text: "מלחמת המפרץ" },
+  { sortKey: "1991-05-24", year: 1991, text: "מבצע שלמה - עליית יהודי אתיופיה" },
+  { sortKey: "1993-09-13", year: 1993, text: "הסכמי אוסלו" },
+  { sortKey: "1994-10-26", year: 1994, text: "חתימת הסכם השלום עם ירדן" },
+  { sortKey: "1995-11-04", year: 1995, text: "רצח ראש הממשלה יצחק רבין" },
+  { sortKey: "2000-05-24", year: 2000, text: "נסיגת צה\"ל מלבנון" },
+  { sortKey: "2000-09-28", year: 2000, text: "האינתיפאדה השנייה" },
+  { sortKey: "2005-08-15", year: 2005, text: "תוכנית ההתנתקות מרצועת עזה" },
+  { sortKey: "2006-07-12", year: 2006, text: "מלחמת לבנון השנייה" },
+  { sortKey: "2011-07-14", year: 2011, text: "מחאת האוהלים" },
+  { sortKey: "2014-07-08", year: 2014, text: "מבצע צוק איתן" },
+  { sortKey: "2018-07-19", year: 2018, text: "חוק הלאום" },
+  { sortKey: "2020-09-15", year: 2020, text: "הסכמי אברהם" },
+  { sortKey: "2021-05-10", year: 2021, text: "מבצע שומר החומות" }
+];
+/* ===================================================================== */
+
+const HAND_SIZE = 10;
+
+/* מחזיר מערך של 10 אינדקסים (לתוך EVENTS) בסדר אקראי */
+function dealHand(events, rng) {
+  rng = rng || Math.random;
+  const anchorYears = new Set(events.filter(e => e.anchor).map(e => e.year));
+  const pool = [];
+  events.forEach((e, i) => {
+    if (e.anchor) return;
+    if (anchorYears.has(e.year) && !e.allowAnchorYear) return;
+    pool.push(i);
+  });
+  for (let i = pool.length - 1; i > 0; i--) {           // ערבוב Fisher-Yates
+    const j = Math.floor(rng() * (i + 1));
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  const usedYears = new Set();
+  const hand = [];
+  for (const idx of pool) {
+    const y = events[idx].year;
+    if (usedYears.has(y)) continue;
+    usedYears.add(y);
+    hand.push(idx);
+    if (hand.length === HAND_SIZE) break;
+  }
+  if (hand.length < HAND_SIZE) throw new Error("not enough distinct years in pool");
+  return hand;
+}
+
+/* הסדר הנכון: העוגנים + היד, ממוינים לפי sortKey */
+function correctOrder(events, hand) {
+  const ids = events.map((e, i) => i).filter(i => events[i].anchor).concat(hand);
+  return ids.sort((a, b) => events[a].sortKey < events[b].sortKey ? -1 : events[a].sortKey > events[b].sortKey ? 1 : 0);
+}
+
+/* CORE:END */
+
+(function () {
+  "use strict";
+
+  const KEY = "israel-timeline-v1";
+  const ANCHOR_IDS = EVENTS.map((e, i) => i).filter(i => EVENTS[i].anchor);
+  const SLOT_COUNT = HAND_SIZE + ANCHOR_IDS.length;
+
+  // חתימה של הנתונים - אם המורה עורך את הרשימה, המצב השמור מתבטל
+  const SIG = (function () {
+    const s = JSON.stringify(EVENTS.map(e => [e.sortKey, e.year, e.text, !!e.anchor, !!e.allowAnchorYear])) + "|" + HAND_SIZE;
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return String(h >>> 0);
+  })();
+
+  /* ---------- אחסון (כל גישה עטופה ב-try/catch) ---------- */
+  const store = {
+    load() { try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } },
+    save(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { /* ממשיכים בלי שמירה */ } },
+    clear() { try { localStorage.removeItem(KEY); } catch (e) { /* */ } }
+  };
+
+  // איפוס נסתר למורה: ?reset=1
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.get("reset") === "1") {
+      store.clear();
+      params.delete("reset");
+      const q = params.toString();
+      history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + location.hash);
+    }
+  } catch (e) { /* */ }
+
+  function newState() {
+    const hand = dealHand(EVENTS);
+    const order = correctOrder(EVENTS, hand);
+    return {
+      sig: SIG,
+      hand: hand,
+      slots: order.map(id => EVENTS[id].anchor ? id : null),
+      locked: [],
+      firstScore: null,
+      checks: 0,
+      done: false
+    };
+  }
+
+  function validState(s) {
+    try {
+      if (!s || s.sig !== SIG) return false;
+      if (!Array.isArray(s.hand) || s.hand.length !== HAND_SIZE) return false;
+      if (!Array.isArray(s.slots) || s.slots.length !== SLOT_COUNT) return false;
+      if (!Array.isArray(s.locked)) return false;
+      const order = correctOrder(EVENTS, s.hand);
+      for (let i = 0; i < SLOT_COUNT; i++) {
+        const id = s.slots[i];
+        if (EVENTS[order[i]].anchor && id !== order[i]) return false;
+        if (id !== null && !(EVENTS[id])) return false;
+        if (id !== null && !EVENTS[id].anchor && s.hand.indexOf(id) === -1) return false;
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  let state = store.load();
+  if (!validState(state)) { state = newState(); store.save(state); }
+  const ORDER = correctOrder(EVENTS, state.hand);
+
+  let selected = null;           // אינדקס האירוע שנבחר במגש
+  let suppressClickUntil = 0;
+  let drag = null;
+
+  /* ---------- עזר ---------- */
+  const $ = id => document.getElementById(id);
+  const elTimeline = $("timeline"), elTray = $("tray"), elMsg = $("msg"),
+        elCheck = $("checkBtn"), elDock = $("dock"), elTop = $("top"),
+        elFirst = $("firstScore"), elStats = $("stats"), elInstr = $("instr"),
+        elTrayCount = $("trayCount");
+
+  const isAnchor = id => id !== null && !!EVENTS[id].anchor;
+  const isLocked = id => id !== null && state.locked.indexOf(id) !== -1;
+  const slotOf = id => state.slots.indexOf(id);
+  const trayIds = () => state.hand.filter(id => slotOf(id) === -1);
+  const allFilled = () => state.slots.every(v => v !== null);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const ICON_LOCK = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z"/></svg></span>';
+  const ICON_CHECK = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor" opacity=".15"/><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M6.5 12.5l3.8 3.8 7.2-8"/></svg></span>';
+  const ICON_GRIP = '<span class="handle" data-handle aria-hidden="true"><svg viewBox="0 0 16 24"><g fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="11" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="11" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="11" cy="19" r="2"/></g></svg></span>';
+
+  function say(text) {
+    elMsg.textContent = text;
+    if (!state.done) document.body.style.setProperty("--dock-h", elDock.offsetHeight + "px");
+  }
+  function persist() { store.save(state); }
+
+  /* ---------- ציור ---------- */
+  function render() {
+    const done = state.done;
+    document.body.classList.toggle("is-done", done);
+
+    // כותרת
+    if (done) {
+      elInstr.textContent = "ציר הזמן הושלם";
+      elFirst.hidden = true;
+      elStats.hidden = false;
+      elStats.innerHTML = "<div>ניחוש ראשון: " + state.firstScore + " מתוך " + HAND_SIZE + "</div>" +
+                          "<div>מספר בדיקות: " + state.checks + "</div>";
+    } else {
+      elStats.hidden = true;
+      if (state.firstScore !== null) {
+        elFirst.hidden = false;
+        elFirst.textContent = "ניחוש ראשון: " + state.firstScore + " מתוך " + HAND_SIZE;
+      } else {
+        elFirst.hidden = true;
+      }
+    }
+
+    // ציר הזמן
+    let html = "";
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const id = state.slots[i];
+      const pos = "מקום " + (i + 1) + " מתוך " + SLOT_COUNT;
+      if (done) {
+        const e = EVENTS[ORDER[i]];
+        const anchor = !!e.anchor;
+        html += '<li class="row ' + (anchor ? "r-anchor" : "r-locked") + '"><div class="slot ' + (anchor ? "anchor" : "locked") + '">' +
+          (anchor ? '<span class="badge">' + esc(e.label) + "</span>" : '<span class="year">' + e.year + "</span>") +
+          '<span class="txt">' + esc(e.text) + "</span>" + (anchor ? ICON_LOCK : ICON_CHECK) + "</div></li>";
+        continue;
+      }
+      if (isAnchor(id)) {
+        const e = EVENTS[id];
+        html += '<li class="row r-anchor"><button type="button" class="slot anchor" data-slot="' + i + '" aria-label="' + esc(pos + ": עוגן קבוע, " + e.label + ", " + e.text) + '">' +
+          '<span class="badge">' + esc(e.label) + '</span><span class="txt">' + esc(e.text) + "</span>" + ICON_LOCK + "</button></li>";
+      } else if (isLocked(id)) {
+        html += '<li class="row r-locked"><button type="button" class="slot locked" data-slot="' + i + '" aria-label="' + esc(pos + ": " + EVENTS[id].text + ", במקום הנכון") + '">' +
+          ICON_CHECK + '<span class="txt">' + esc(EVENTS[id].text) + '</span><span class="ok-label">במקום</span></button></li>';
+      } else if (id !== null) {
+        html += '<li class="row"><button type="button" class="slot filled" data-slot="' + i + '" aria-label="' + esc(pos + ": " + EVENTS[id].text + ". הקישו כדי להחזיר למגש") + '">' +
+          ICON_GRIP + '<span class="txt">' + esc(EVENTS[id].text) + "</span></button></li>";
+      } else {
+        const can = selected !== null;
+        html += '<li class="row"><button type="button" class="slot empty' + (can ? " can-drop" : "") + '" data-slot="' + i + '" aria-label="' + esc(pos + ": משבצת ריקה") + '">' +
+          '<span class="ph">' + (can ? "הקישו כאן כדי להניח" : "משבצת ריקה") + "</span></button></li>";
+      }
+    }
+    elTimeline.innerHTML = html;
+
+    // מגש
+    elDock.hidden = done;
+    if (!done) {
+      const ids = trayIds();
+      if (selected !== null && ids.indexOf(selected) === -1) selected = null;
+      elTrayCount.textContent = "במגש: " + ids.length;
+      if (ids.length === 0) {
+        elTray.innerHTML = '<div class="tray-empty">כל המשבצות מלאות. אפשר ללחוץ על "בדיקה".</div>';
+      } else {
+        elTray.innerHTML = ids.map(id =>
+          '<button type="button" class="card' + (id === selected ? " selected" : "") + '" data-card="' + id + '" aria-pressed="' + (id === selected) + '">' +
+          ICON_GRIP + '<span class="txt">' + esc(EVENTS[id].text) + "</span></button>").join("");
+      }
+      elCheck.disabled = !allFilled();
+      document.body.style.setProperty("--dock-h", elDock.offsetHeight + "px");
+    }
+  }
+
+  /* ---------- פעולות ---------- */
+  // מעביר אירוע למשבצת. אם המשבצת תפוסה: מחליף (מהמגש - הקודם חוזר למגש; ממשבצת - החלפת מקומות)
+  function placeInto(id, target) {
+    const occupant = state.slots[target];
+    if (isAnchor(occupant) || isLocked(occupant) || occupant === id) return false;
+    const from = slotOf(id);
+    if (from !== -1) state.slots[from] = occupant;   // occupant יכול להיות null
+    state.slots[target] = id;
+    return true;
+  }
+  function returnToTray(slotIndex) {
+    const id = state.slots[slotIndex];
+    if (id === null || isAnchor(id) || isLocked(id)) return false;
+    state.slots[slotIndex] = null;
+    return true;
+  }
+
+  function doCheck() {
+    if (!allFilled() || state.done) return;
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const id = state.slots[i];
+      if (isAnchor(id) || isLocked(id)) continue;
+      if (ORDER[i] === id) state.locked.push(id);
+      else state.slots[i] = null;
+    }
+    state.checks++;
+    const correct = state.locked.length;
+    const first = state.firstScore === null;
+    if (first) state.firstScore = correct;
+    if (correct === HAND_SIZE) state.done = true;
+    selected = null;
+    persist();
+    render();
+    if (state.done) {
+      window.scrollTo(0, 0);
+      say("");
+    } else {
+      const back = HAND_SIZE - correct;
+      say(correct + " מתוך " + HAND_SIZE + " במקומם וננעלו. " +
+          (back === 1 ? "אירוע אחד חזר למגש." : back + " אירועים חזרו למגש.") + " נסו למקם אותם שוב.");
+      if (first) { elFirst.classList.remove("pop"); void elFirst.offsetWidth; elFirst.classList.add("pop"); }
+    }
+  }
+
+  /* ---------- הקשות ---------- */
+  document.addEventListener("click", function (e) {
+    if (state.done) return;
+    if (Date.now() < suppressClickUntil) return;
+    if (e.target.closest("#checkBtn")) { doCheck(); return; }
+
+    const card = e.target.closest("[data-card]");
+    if (card) {
+      const id = +card.dataset.card;
+      selected = (selected === id) ? null : id;
+      say(selected !== null ? "נבחר: " + EVENTS[id].text + ". עכשיו הקישו על משבצת בציר." : "");
+      render();
+      return;
+    }
+
+    const slot = e.target.closest("[data-slot]");
+    if (slot) {
+      const i = +slot.dataset.slot;
+      const id = state.slots[i];
+      if (isAnchor(id)) { say("זהו אירוע עוגן קבוע. הוא לא זז."); return; }
+      if (isLocked(id)) { say("האירוע הזה כבר במקום הנכון."); return; }
+      if (selected !== null) {
+        const placed = selected;
+        if (placeInto(placed, i)) {
+          selected = null;
+          say(id !== null ? "האירועים הוחלפו. \"" + EVENTS[id].text + "\" חזר למגש." : "");
+          persist(); render();
+        }
+        return;
+      }
+      if (id !== null) {
+        returnToTray(i);
+        say("\"" + EVENTS[id].text + "\" חזר למגש.");
+        persist(); render();
+      } else {
+        say("קודם בחרו אירוע מהמגש למטה.");
+      }
+    }
+  });
+
+  /* ---------- גרירה (Pointer Events, דרך הידית בלבד) ---------- */
+  function clearDropMarks() {
+    document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
+  }
+  function updateTarget() {
+    if (!drag) return;
+    const el = document.elementFromPoint(drag.x, drag.y);
+    let target = null, mark = null;
+    const slotEl = el && el.closest("[data-slot]");
+    if (slotEl) {
+      const i = +slotEl.dataset.slot;
+      const occ = state.slots[i];
+      if (!isAnchor(occ) && !isLocked(occ) && occ !== drag.id) { target = { slot: i }; mark = slotEl; }
+    } else if (el && el.closest("#dock") && drag.from !== "tray") {
+      target = { tray: true }; mark = elDock;
+    }
+    if (mark !== drag.mark) { clearDropMarks(); if (mark) mark.classList.add("drop-target"); drag.mark = mark; }
+    drag.target = target;
+  }
+  function autoScrollLoop() {
+    if (!drag) return;
+    const zone = 64;
+    const topEdge = elTop.getBoundingClientRect().bottom;
+    const bottomEdge = elDock.getBoundingClientRect().top;
+    let v = 0;
+    if (drag.y < topEdge + zone) v = -Math.ceil(Math.min(1, (topEdge + zone - drag.y) / zone) * 14);
+    else if (drag.y > bottomEdge - zone && drag.y < bottomEdge) v = Math.ceil(Math.min(1, (drag.y - (bottomEdge - zone)) / zone) * 14);
+    if (v !== 0) {
+      const before = window.scrollY;
+      window.scrollBy(0, v);
+      if (window.scrollY !== before) updateTarget();
+    }
+    drag.raf = requestAnimationFrame(autoScrollLoop);
+  }
+  function moveGhost() {
+    drag.ghost.style.left = (drag.x - drag.dx) + "px";
+    drag.ghost.style.top = (drag.y - drag.dy) + "px";
+  }
+  function startGhost() {
+    const host = drag.src;
+    const r = host.getBoundingClientRect();
+    const ghost = host.cloneNode(true);
+    ghost.classList.add("ghost");
+    ghost.classList.remove("selected");
+    ghost.removeAttribute("data-card"); ghost.removeAttribute("data-slot");
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.style.width = r.width + "px";
+    ghost.style.height = r.height + "px";
+    document.body.appendChild(ghost);
+    host.classList.add("drag-src");
+    drag.dx = drag.x0 - r.left; drag.dy = drag.y0 - r.top;
+    drag.ghost = ghost;
+    drag.active = true;
+
+    selected = null;
+    document.querySelectorAll(".card.selected").forEach(c => c.classList.remove("selected"));
+    document.querySelectorAll(".slot.can-drop").forEach(c => { c.classList.remove("can-drop"); });
+
+    moveGhost();
+    updateTarget();
+    drag.raf = requestAnimationFrame(autoScrollLoop);
+  }
+  function endDrag(commit) {
+    if (!drag) return;
+    if (!drag.active) { drag = null; return; }   // הקשה על הידית בלי תזוזה - נחשבת להקשה רגילה
+    cancelAnimationFrame(drag.raf);
+    const d = drag;
+    drag = null;
+    d.ghost.remove();
+    d.src.classList.remove("drag-src");
+    clearDropMarks();
+    suppressClickUntil = Date.now() + 400;
+    if (commit && d.target) {
+      let changed = false;
+      if (d.target.tray) changed = returnToTray(d.from);
+      else {
+        const occ = state.slots[d.target.slot];
+        changed = placeInto(d.id, d.target.slot);
+        if (changed) say(occ !== null && d.from === "tray" ? "\"" + EVENTS[occ].text + "\" חזר למגש." : "");
+      }
+      if (changed) persist();
+    }
+    render();
+  }
+
+  document.addEventListener("pointerdown", function (e) {
+    if (state.done || drag) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const handle = e.target.closest("[data-handle]");
+    if (!handle) return;
+    const host = handle.closest("[data-card],[data-slot]");
+    if (!host) return;
+    let id, from;
+    if (host.hasAttribute("data-card")) { id = +host.dataset.card; from = "tray"; }
+    else { from = +host.dataset.slot; id = state.slots[from]; if (id === null || isAnchor(id) || isLocked(id)) return; }
+    try { handle.setPointerCapture(e.pointerId); } catch (err) { /* */ }
+    drag = { id, from, pid: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, dx: 0, dy: 0,
+             ghost: null, src: host, target: null, mark: null, raf: 0, active: false };
+  }, { passive: false });
+
+  window.addEventListener("pointermove", function (e) {
+    if (!drag || e.pointerId !== drag.pid) return;
+    e.preventDefault();
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (!drag.active) {
+      if (Math.abs(drag.x - drag.x0) + Math.abs(drag.y - drag.y0) < 6) return;
+      startGhost();
+      return;
+    }
+    moveGhost();
+    updateTarget();
+  }, { passive: false });
+  window.addEventListener("pointerup", function (e) { if (drag && e.pointerId === drag.pid) endDrag(true); });
+  window.addEventListener("pointercancel", function (e) { if (drag && e.pointerId === drag.pid) endDrag(false); });
+  // מונע גלילה של iOS תוך כדי גרירה
+  document.addEventListener("touchmove", function (e) { if (drag && drag.active) e.preventDefault(); }, { passive: false });
+
+  window.addEventListener("resize", function () {
+    if (!state.done) document.body.style.setProperty("--dock-h", elDock.offsetHeight + "px");
+  });
+
+  render();
+  if (!state.done && state.firstScore !== null) {
+    const correct = state.locked.length;
+    say(correct + " מתוך " + HAND_SIZE + " במקומם. המשיכו למקם את האירועים שבמגש.");
+  }
+})();
+</script>
+</body>
+</html>
