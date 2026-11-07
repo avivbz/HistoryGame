@@ -61,6 +61,9 @@
     padding-bottom: calc(var(--dock-h, 190px) + 16px);
   }
   body.is-done { padding-bottom: 32px; }
+  .again { padding: 8px 16px 0; }
+  .again .check { width: 100%; margin: 0; }
+  .again .check.armed { background: var(--sel); color: #1a1d23; }
   body.is-done .instr { font-size: 1.1rem; font-weight: 700; color: var(--ok-border); }
   button { font: inherit; color: inherit; }
   [hidden] { display: none !important; }
@@ -320,6 +323,7 @@
     cursor: pointer;
   }
   @media (prefers-color-scheme: dark) { .check { color: #0d1526; } }
+  .check { -webkit-tap-highlight-color: transparent; }
   .check:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -342,6 +346,9 @@
   <div class="edge" aria-hidden="true">▲ מוקדם</div>
   <ol class="timeline" id="timeline" aria-label="ציר הזמן"></ol>
   <div class="edge" aria-hidden="true">▼ מאוחר</div>
+  <div class="again" id="again" hidden>
+    <button type="button" class="check" id="newGameBtn">משחק חדש עם אירועים אחרים</button>
+  </div>
 </main>
 
 <footer class="dock" id="dock">
@@ -514,7 +521,7 @@ function correctOrder(events, hand) {
 
   let state = store.load();
   if (!validState(state)) { state = newState(); store.save(state); }
-  const ORDER = correctOrder(EVENTS, state.hand);
+  let ORDER = correctOrder(EVENTS, state.hand);
 
   let selected = null;           // אינדקס האירוע שנבחר במגש
   let suppressClickUntil = 0;
@@ -548,6 +555,7 @@ function correctOrder(events, hand) {
   function render() {
     const done = state.done;
     document.body.classList.toggle("is-done", done);
+    $("again").hidden = !done;
 
     // כותרת
     if (done) {
@@ -660,6 +668,28 @@ function correctOrder(events, hand) {
   }
 
   /* ---------- הקשות ---------- */
+  /* ---------- משחק חדש (מופיע רק במסך הסיום, דורש הקשה כפולה) ---------- */
+  let newGameArmed = 0;
+  function newGame() {
+    state = newState();
+    ORDER = correctOrder(EVENTS, state.hand);
+    selected = null;
+    persist();
+    say("");
+    render();
+    window.scrollTo(0, 0);
+  }
+  $("newGameBtn").addEventListener("click", function () {
+    const btn = this;
+    if (Date.now() < newGameArmed) { newGameArmed = 0; btn.classList.remove("armed"); btn.textContent = "משחק חדש עם אירועים אחרים"; newGame(); return; }
+    newGameArmed = Date.now() + 4000;
+    btn.classList.add("armed");
+    btn.textContent = "הקישו שוב כדי להתחיל משחק חדש";
+    setTimeout(function () {
+      if (Date.now() >= newGameArmed) { btn.classList.remove("armed"); btn.textContent = "משחק חדש עם אירועים אחרים"; }
+    }, 4100);
+  });
+
   document.addEventListener("click", function (e) {
     if (state.done) return;
     if (Date.now() < suppressClickUntil) return;
